@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://python-editor-and-terminal-1.onrender.com/api';
+const API_URL = 'https://python-editor-and-terminal.onrender.com';
 
 interface ExecuteResponse {
   output: string;
