@@ -11,16 +11,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+// Render will set process.env.PORT automatically. Using 3001 as a local default.
+const PORT = process.env.PORT || 3001; 
 
 // Create a temp directory for Python scripts
+// This directory will be created relative to your Node.js app's root within Render
 const tempDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-app.use(cors());
-app.use(express.json());
+// --- START: CORS Configuration ---
+// Get the Netlify frontend URL from the environment variable
+// This variable MUST be set on Render for your Node.js service
+const netlifyFrontendUrl = process.env.NETLIFY_FRONTEND_URL; 
+
+// Define CORS options to restrict access to your Netlify frontend
+const corsOptions = {
+  origin: netlifyFrontendUrl, // This will be your deployed Netlify URL (e.g., https://your-site.netlify.app)
+  optionsSuccessStatus: 200 // For older browsers (IE11, various SmartTVs)
+};
+
+// Apply the CORS middleware with the specific options
+app.use(cors(corsOptions));
+// --- END: CORS Configuration ---
+
+app.use(express.json()); // To parse JSON request bodies
 
 app.post('/api/execute', async (req, res) => {
   const { code } = req.body;
@@ -61,19 +77,32 @@ app.post('/api/execute', async (req, res) => {
   } catch (error) {
     let errorMessage = 'An error occurred while executing the code';
     
-    if (error.message.includes('timed out')) {
+    // Handle specific errors from python-shell
+    if (error.message && error.message.includes('timed out')) {
       errorMessage = 'Execution timed out after 5 seconds';
     } else if (error.traceback) {
       errorMessage = `Python Error:\n${error.traceback}`;
     } else if (error.message) {
       errorMessage = error.message;
+    } else {
+      errorMessage = JSON.stringify(error); // Catch-all for unexpected error formats
     }
     
+    // Log the full error for debugging on Render
+    console.error('Error executing Python code:', error); 
+
     res.status(500).json({ message: errorMessage });
   }
 });
 
+// Basic route for the root URL, useful for checking if the server is running
+app.get('/', (req, res) => {
+  res.send('Node.js Backend is running!');
+});
+
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`API endpoint: http://localhost:${PORT}/api/execute`);
+  // The API endpoint URL should be the Render public URL in production
+  console.log(`API endpoint: http://localhost:${PORT}/api/execute (for local testing only)`); 
 });
