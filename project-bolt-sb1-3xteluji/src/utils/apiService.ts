@@ -8,7 +8,8 @@ interface ExecuteResponse {
 
 export const executeCode = async (code: string): Promise<ExecuteResponse> => {
   try {
-    const response = await axios.post(`${API_URL}/execute`, { code });
+    // CORRECTED LINE: Added '/api' before '/execute'
+    const response = await axios.post(`${API_URL}/api/execute`, { code }); 
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
