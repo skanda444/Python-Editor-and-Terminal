@@ -11,35 +11,28 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-// Render will set process.env.PORT automatically. Using 3001 as a local default.
 const PORT = process.env.PORT || 3001; 
 
-// Create a temp directory for Python scripts
-// This directory will be created relative to your Node.js app's root within Render
 const tempDir = path.join(__dirname, 'temp');
 if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-// --- START: CORS Configuration ---
-// Get the Netlify frontend URL from the environment variable
-// This variable MUST be set on Render for your Node.js service
-const netlifyFrontendUrl = process.env.NETLIFY_FRONTEND_URL; 
+// --- START: CORS Configuration (TEMPORARY HARDCODED FOR DEBUGGING) ---
+// IMPORTANT: This is for debugging only. In production, you should use process.env.NETLIFY_FRONTEND_URL
+const hardcodedNetlifyFrontendUrl = 'https://python-terminal1.netlify.app'; 
 
-// ADDED FOR DEBUGGING: This will print the value Render provides for NETLIFY_FRONTEND_URL
-console.log('CORS Origin (NETLIFY_FRONTEND_URL) set to:', netlifyFrontendUrl);
+console.log('CORS Origin (HARDCODED FOR DEBUGGING) set to:', hardcodedNetlifyFrontendUrl);
 
-// Define CORS options to restrict access to your Netlify frontend
 const corsOptions = {
-  origin: netlifyFrontendUrl, // This will be your deployed Netlify URL (e.g., https://your-site.netlify.app)
-  optionsSuccessStatus: 200 // For older browsers (IE11, various SmartTVs)
+  origin: hardcodedNetlifyFrontendUrl, // Using the hardcoded URL for testing
+  optionsSuccessStatus: 200
 };
 
-// Apply the CORS middleware with the specific options
 app.use(cors(corsOptions));
 // --- END: CORS Configuration ---
 
-app.use(express.json()); // To parse JSON request bodies
+app.use(express.json());
 
 app.post('/api/execute', async (req, res) => {
   const { code } = req.body;
@@ -49,38 +42,33 @@ app.post('/api/execute', async (req, res) => {
   }
   
   try {
-    // Generate a unique file name
     const scriptId = uuidv4();
     const scriptPath = path.join(tempDir, `${scriptId}.py`);
     
-    // Write the Python code to a file
     fs.writeFileSync(scriptPath, code);
     
-    // Execute the Python code
     const options = {
       mode: 'text',
-      pythonPath: 'python', // Use the default Python path
-      pythonOptions: ['-u'], // Unbuffered output
+      pythonPath: 'python',
+      pythonOptions: ['-u'],
       scriptPath: tempDir,
       args: [],
-      timeout: 5000 // 5 second timeout
+      timeout: 5000
     };
     
     const results = await PythonShell.run(`${scriptId}.py`, options);
     const output = results.join('\n');
     
-    // Clean up the temporary file
     try {
       fs.unlinkSync(scriptPath);
     } catch (err) {
-        console.error('Error deleting temporary file:', err); 
+      console.error('Error deleting temporary file:', err); 
     }
     
     res.json({ output });
   } catch (error) {
     let errorMessage = 'An error occurred while executing the code';
     
-    // Handle specific errors from python-shell
     if (error.message && error.message.includes('timed out')) {
       errorMessage = 'Execution timed out after 5 seconds';
     } else if (error.traceback) {
@@ -88,24 +76,20 @@ app.post('/api/execute', async (req, res) => {
     } else if (error.message) {
       errorMessage = error.message;
     } else {
-      errorMessage = JSON.stringify(error); // Catch-all for unexpected error formats
+      errorMessage = JSON.stringify(error);
     }
     
-    // Log the full error for debugging on Render
     console.error('Error executing Python code:', error); 
 
     res.status(500).json({ message: errorMessage });
   }
 });
 
-// Basic route for the root URL, useful for checking if the server is running
 app.get('/', (req, res) => {
   res.send('Node.js Backend is running!');
 });
 
-
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  // The API endpoint URL should be the Render public URL in production
   console.log(`API endpoint: http://localhost:${PORT}/api/execute (for local testing only)`); 
 });
