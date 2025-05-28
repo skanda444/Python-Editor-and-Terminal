@@ -26,6 +26,9 @@ if (!fs.existsSync(tempDir)) {
 // This variable MUST be set on Render for your Node.js service
 const netlifyFrontendUrl = process.env.NETLIFY_FRONTEND_URL; 
 
+// ADDED FOR DEBUGGING: This will print the value Render provides for NETLIFY_FRONTEND_URL
+console.log('CORS Origin (NETLIFY_FRONTEND_URL) set to:', netlifyFrontendUrl);
+
 // Define CORS options to restrict access to your Netlify frontend
 const corsOptions = {
   origin: netlifyFrontendUrl, // This will be your deployed Netlify URL (e.g., https://your-site.netlify.app)
@@ -70,7 +73,7 @@ app.post('/api/execute', async (req, res) => {
     try {
       fs.unlinkSync(scriptPath);
     } catch (err) {
-      console.error('Error deleting temporary file:', err);
+        console.error('Error deleting temporary file:', err); 
     }
     
     res.json({ output });
